@@ -3,3 +3,4 @@ graflang[kernel] @ git+https://github.com/digital-duck/graflang.git   # [kernel]
 streamlit>=1.50
 pandas>=2.0
 pyyaml>=6.0
+pypdf>=4.0                  # text from attached PDFs

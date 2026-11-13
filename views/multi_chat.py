@@ -8,7 +8,10 @@ chatbot, capped at one per run; Anthropic and OpenRouter models are billed, loca
 """
 from __future__ import annotations
 
+import base64
+import io
 import json
+import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -16,7 +19,6 @@ from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 import chat_models as cm
 from chat_models import PROVIDERS
@@ -26,8 +28,61 @@ from graphlang.grafr.runtime import GraphLangRuntime, load_graph
 
 GRAPH = Path(__file__).resolve().parent.parent / "chat_turn.graph.yaml"
 MAX_BOTS = 5
+TEXT_TYPES = ["txt", "md", "py", "json", "csv", "yaml", "yml", "xml", "html", "css", "js", "ts", "sql", "log", "toml", "ini", "sh"]
+IMAGE_TYPES = ["png", "jpg", "jpeg", "gif", "webp"]
+FILE_TYPES = TEXT_TYPES + ["pdf"] + IMAGE_TYPES
+OLLAMA_CTX_TOKENS = int(os.environ.get("OLLAMA_CONTEXT_LENGTH") or 4096)      # Ollama's context window (its default is 4096): set the same variable here if you raised it for `ollama serve`
+IMAGE_ADAPTERS = ("ollama", "openrouter")           # adapters that take images here; the Claude CLI runs without tools, so it cannot read them
+MAX_FILE_CHARS = 100_000                    # per attached file: a bigger one is cut, so it fits the model's context
 DEFAULT_BOTS = 3
 DEFAULT_MODELS = [("anthropic", "sonnet"), ("anthropic", "opus"), ("ollama", "gemma3"), ("anthropic", "haiku"), ("ollama", "llama3")]      # chatbots 1 to 5: provider, model (ollama: name prefix)
+
+
+def read_attachment(f) -> str:
+    """The text of an uploaded file: a PDF's extracted text, any other file decoded as UTF-8 (cut at MAX_FILE_CHARS)."""
+    data = f.getvalue()
+    if f.name.lower().endswith(".pdf"):
+        from pypdf import PdfReader
+        text = "\n\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages)
+    else:
+        text = data.decode("utf-8", errors="replace")
+    if len(text) > MAX_FILE_CHARS:
+        text = text[:MAX_FILE_CHARS] + f"\n[... cut: the file has {len(text):,} characters, the first {MAX_FILE_CHARS:,} are shown]"
+    return text
+
+
+def is_image(f) -> bool:
+    return f.name.rsplit(".", 1)[-1].lower() in IMAGE_TYPES
+
+
+def with_attachments(question: str, files: list) -> tuple[str, str, list[tuple[str, bytes]], str]:
+    """(what the models get, what the page shows, the images, what the history keeps if the files are not kept): file contents go in front of the question; the page lists just the file names.
+    An image is sent only with this question (a later turn's history just notes that it was attached)."""
+    if not files:
+        return question, question, [], question
+    images = [(f.type or "image/png", f.getvalue()) for f in files if is_image(f)]
+    parts = [f"--- attached file: {f.name} ---\n{read_attachment(f)}\n--- end of {f.name} ---" for f in files if not is_image(f)]
+    parts += [f"[image attached: {f.name}]" for f in files if is_image(f)]
+    notes = "\n".join(f"[file attached to this question only: {f.name}]" for f in files)
+    return "\n\n".join(parts) + "\n\n" + question, question + "\n\n" + " ".join(f"📎 `{f.name}`" for f in files), images, notes + "\n\n" + question
+
+
+def ask_with_images(question: str, history: list[dict], llm: str, last_n: int, images: list[tuple[str, bytes]]) -> tuple[str, float]:
+    """A turn with pictures, straight to the adapter (the graph passes text only): the recent history, then the question with its images."""
+    adapter, _, model = llm.partition(":")
+    if adapter not in IMAGE_ADAPTERS:
+        raise RuntimeError("this chatbot cannot read images (the Claude CLI runs without tools); use an Ollama vision model or an OpenRouter model")
+    import dd_llm
+    start = time.monotonic()
+    recent = [{"role": m["role"], "content": m["content"]} for m in history[-2 * last_n:]]
+    content = [{"type": "text", "text": question}] + [
+        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"}} for mime, data in images]
+    result = dd_llm.get_adapter(adapter).call(model=model, messages=recent + [{"role": "user", "content": content}],
+                                              system="You are a helpful assistant engaged in a multi-turn conversation. Reply concisely and helpfully, in Markdown.")
+    if not result.success:
+        errors = result.error_history or []
+        raise RuntimeError(errors[-1]["error"] if errors else f"{adapter} call failed")
+    return result.content, time.monotonic() - start
 
 
 def ask(question: str, history: list[dict], llm: str, last_n: int) -> tuple[str, float]:
@@ -88,15 +143,15 @@ def set_feedback(i: int, idx: int, value: int) -> None:
 def copy_button(text: str) -> None:
     """📋 puts `text` on the clipboard. Streamlit has no clipboard call, so a small page of its own does it (the textarea route works
     where `navigator.clipboard` is not allowed in an iframe)."""
-    components.html(
-        """<button id="b" title="Copy markdown" style="font-size:16px;padding:2px 10px;border:1px solid #ccc;border-radius:8px;
+    st.iframe(
+        """<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent}</style><button id="b" title="Copy markdown" style="font-size:16px;padding:2px 10px;border:1px solid #ccc;border-radius:8px;
         background:transparent;cursor:pointer">📋</button><script>
         const text = %s, b = document.getElementById("b");
         b.onclick = () => {
           const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
           let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
           t.remove(); b.textContent = ok ? "✅" : "⚠️"; setTimeout(() => b.textContent = "📋", 1200);
-        };</script>""" % json.dumps(text).replace("</", "<\\/"), height=38)
+        };</script>""" % json.dumps(text).replace("</", "<\\/"), height=40, width=80)
 
 
 def show(i: int, history: list[dict]) -> None:
@@ -104,10 +159,14 @@ def show(i: int, history: list[dict]) -> None:
     for idx, m in enumerate(history):
         asked += m["role"] == "user"
         with st.chat_message(m["role"]):
-            st.markdown(f"**[{m.get('q', asked)}]** {m['content']}" if m["role"] == "user" else m["content"])   # the question number lines the columns up
+            st.markdown(f"**[{m.get('q', asked)}]** {m.get('shown', m['content'])}" if m["role"] == "user" else m["content"])   # the question number lines the columns up
             if m["role"] == "assistant":
                 if m.get("model"):
                     st.caption(f"{m['model']} · {m['seconds']:.1f}s")
+                if m.get("model", "").startswith("ollama:") and m.get("est_tokens", 0) > m.get("ctx_tokens", OLLAMA_CTX_TOKENS):
+                    st.warning(f"⚠️ this prompt is about {m['est_tokens']:,} tokens but Ollama's context window is {m.get('ctx_tokens', OLLAMA_CTX_TOKENS):,}: "
+                               "the start of it was probably dropped. Start `ollama serve` with a bigger `OLLAMA_CONTEXT_LENGTH`, "
+                               "or click New chat to drop the earlier turns (an attached file stays in the history).")
                 copy, up, down, _ = st.columns([1, 1, 1, 5], vertical_alignment="center")
                 with copy:
                     copy_button(m["content"])
@@ -136,7 +195,7 @@ def export_yaml() -> str:
         for m in st.session_state.get(f"history_{i}", []):
             if m["role"] == "user":
                 asked += 1
-                pending = (m.get("q", asked), m["content"])
+                pending = (m.get("q", asked), m.get("shown", m["content"]))
             elif pending:
                 q, text = pending
                 adapter, _, model = (m.get("model") or ":").partition(":")
@@ -173,6 +232,9 @@ def main() -> None:
                                             help="the size of the conversation text"))
     st.markdown(f"<style>[data-testid='stChatMessage'] :is(p, li, code, td, th), [data-testid='stChatInput'] textarea "
                 f"{{ font-size: {font_size}px; }}</style>", unsafe_allow_html=True)
+    keep_files = st.sidebar.checkbox("Keep attached files in the chat", value=True, key="keep_files",
+                                     help="on: later questions still see the attached files (a long file is sent again every turn, and may overflow a small context window); "
+                                          "off: a file is sent with the question it is attached to, and later turns only know its name")
     bots = [bot_settings(i) for i in range(n)]
     st.sidebar.caption(f"graph: `{GRAPH.name}`, run once per chatbot per question")
 
@@ -188,8 +250,15 @@ def main() -> None:
                 if st.session_state.get(f"error_{i}"):
                     st.error(st.session_state[f"error_{i}"])
 
-    question = st.chat_input("Ask a question" + (" (every chatbot answers)" if n > 1 else ""))
-    if not question:
+    entry = st.chat_input("Ask a question" + (" (every chatbot answers)" if n > 1 else ""), accept_file="multiple", file_type=FILE_TYPES)
+    if not entry:
+        return
+    try:
+        question, shown, images, lean = with_attachments(entry.text, list(entry.files))
+    except Exception as e:
+        st.error(f"Could not read the attachment: {type(e).__name__}: {e}")
+        return
+    if not entry.text and not entry.files:
         return
     qnum = st.session_state["qnum"] = st.session_state.get("qnum", 0) + 1
     ready = [i for i, bot in enumerate(bots) if bot["llm"]]
@@ -198,16 +267,21 @@ def main() -> None:
         return
     with st.spinner(f"asking {len(ready)} chatbot(s)"):
         with ThreadPoolExecutor(max_workers=len(ready)) as pool:          # the chatbots answer at the same time
-            futures = {i: pool.submit(ask, question, st.session_state[f"history_{i}"], bots[i]["llm"], bots[i]["last_n"]) for i in ready}
+            run = (lambda *a: ask_with_images(*a, images)) if images else ask
+            futures = {i: pool.submit(run, question, st.session_state[f"history_{i}"], bots[i]["llm"], bots[i]["last_n"]) for i in ready}
     for i, future in futures.items():
         st.session_state.pop(f"error_{i}", None)
         try:
             reply, seconds = future.result()
         except Exception as e:              # one failing chatbot does not lose the others' replies, and its conversation stays as it was
-            st.session_state[f"error_{i}"] = f"{question!r} failed: {type(e).__name__}: {e}"
+            st.session_state[f"error_{i}"] = f"{shown!r} failed: {type(e).__name__}: {e}"
             continue
-        st.session_state[f"history_{i}"] += [{"role": "user", "content": question, "q": qnum},
-                                             {"role": "assistant", "content": reply, "model": bots[i]["llm"], "seconds": seconds}]
+        recent = st.session_state[f"history_{i}"][-2 * bots[i]["last_n"]:]
+        est_tokens = (sum(len(m["content"]) for m in recent) + len(question)) // 4          # a rough count: four characters a token
+        adapter, _, model = bots[i]["llm"].partition(":")
+        ctx_tokens = (cm.ollama_context(model) if adapter == "ollama" else None) or OLLAMA_CTX_TOKENS     # what Ollama says it loaded the model with, else the variable
+        st.session_state[f"history_{i}"] += [{"role": "user", "content": question if keep_files else lean, "shown": shown, "q": qnum},
+                                             {"role": "assistant", "content": reply, "model": bots[i]["llm"], "seconds": seconds, "est_tokens": est_tokens, "ctx_tokens": ctx_tokens}]
     st.rerun()
 
 

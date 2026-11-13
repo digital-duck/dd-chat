@@ -44,6 +44,17 @@ def ollama_models() -> list[str]:
     return chat
 
 
+def ollama_context(model: str) -> int | None:
+    """The context window (tokens) Ollama loaded `model` with, from its /api/ps; None when it does not say (an older Ollama) or is not running."""
+    try:
+        for m in _get_json(OLLAMA_URL + "/api/ps", timeout=2).get("models", []):
+            if model in (m.get("name"), m.get("model")) and m.get("context_length"):
+                return int(m["context_length"])
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 @st.cache_data(ttl=3600, show_spinner="asking OpenRouter for its models")
 def openrouter_models() -> list[dict]:
     """OpenRouter's catalogue (a public list, no key needed): id, name, context length, price in $ per million tokens."""
