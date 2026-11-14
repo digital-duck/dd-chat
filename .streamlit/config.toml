@@ -1,0 +1,8 @@
+[theme]
+# The text size of the whole app in px (Streamlit's default is 16), tables included. Keep it equal to FONT_SIZE in chat_text.py.
+baseFontSize = 18
+
+[global]
+# The Chats page restores its saved settings into session state, and its widgets also have defaults (for the first run):
+# that is intended, and Streamlit would log a long stack trace about it.
+disableWidgetStateDuplicationWarning = true

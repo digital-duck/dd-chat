@@ -1,26 +1,31 @@
-"""Config LLM: choose which models the Multi-Chats page offers, for each provider."""
+"""Settings: choose which models the Chats page offers, for each provider."""
 from __future__ import annotations
-
-import os
 
 import pandas as pd
 import streamlit as st
 
+import chat_db
 import chat_models as cm
 
-st.title("⚙️ Config LLM")
-st.caption(f"Tick the models each provider may use; only those are options in the Model dropdown of Multi-Chats. Saved in `{cm.CONFIG}`.")
+st.title("⚙️ Settings")
+st.caption(f"Tick the models each provider may use; only those are options in the Model dropdown of the Chats page. Saved in the SQLite database `{chat_db.DB}`.")
 
 
 def panel(provider: str) -> None:
     adapter = cm.PROVIDERS[provider]
     top, _ = st.columns([1, 3])
-    if top.button("Refresh the list", key=f"refresh_{provider}", disabled=provider == "anthropic",
+    st.caption(cm.INFO[provider].note + (" · billed" if cm.INFO[provider].billed else "")
+               + (" · reads images" if cm.INFO[provider].images else ""))
+    if top.button("Refresh the list", key=f"refresh_{provider}", disabled=not cm.can_refresh(provider),
                   help="ask the provider again for its models"):
         cm.openrouter_models.clear()
         cm.ollama_models.clear()
-    if provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
-        st.warning("OPENROUTER_API_KEY is not set: the list loads, but a chatbot cannot call these models.")
+        cm.openai_models.clear()
+    if cm.missing_key(provider):
+        st.warning(f"`{cm.missing_key(provider)}` is not set: " + ("the list loads, but " if provider == "openrouter" else "")
+                   + "a chatbot cannot call these models. Set it in the shell that starts Streamlit.")
+    if not cm.can_refresh(provider):
+        st.caption("This provider's models cannot be listed here: these are the known ones; add others by hand below.")
     try:
         rows = cm.available(provider)
     except OSError as e:
@@ -46,7 +51,7 @@ def panel(provider: str) -> None:
         st.rerun()
 
     add, button = st.columns([3, 1], vertical_alignment="bottom")
-    new = add.text_input("Add a model id by hand", key=f"add_{provider}", placeholder="e.g. claude-sonnet-5-5" if provider == "anthropic" else "model id").strip()
+    new = add.text_input("Add a model id by hand", key=f"add_{provider}", placeholder="e.g. claude-sonnet-5-5" if provider.startswith("anthropic") else "model id").strip()
     if button.button("Add", key=f"add_go_{provider}", disabled=not new):
         cm.save_selected(provider, chosen + [new])
         st.rerun()

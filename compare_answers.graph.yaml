@@ -1,0 +1,66 @@
+# Compare the answers several chatbots gave to one question: where they agree, where they differ, and what looks wrong.
+# The Multi-Chat page runs it when you click "Compare" under the chats; it also runs from the command line:
+#   graf run compare_answers.graph.yaml --param question="..." --param answers="### Chatbot 1\n...\n\n### Chatbot 2\n..."
+version: 1.0-graph
+workflow:
+  name: compare_answers
+  inputs:
+  - name: question
+    type: TEXT
+    description: the question every chatbot answered
+  - name: answers
+    type: TEXT
+    description: the answers, each under a `### <label>` heading
+  - name: language
+    type: TEXT
+    default: the same language as the question
+    description: the language the comparison is written in, as a phrase that completes "Write it in ..."
+  outputs:
+  - name: comparison
+    type: TEXT
+nodes:
+- id: wf_entry
+  type: INPUT
+  ports:
+  - entry
+  - out_question
+  - out_answers
+  - out_language
+- id: compare
+  type: GENERATE
+  config:
+    function: compare_answers
+    prompt_inline: |-
+      Several AI assistants answered the same question. Compare their answers for a reader who wants to know which to trust.
+      Question:
+      {{in_question}}
+
+      Answers:
+      {{in_answers}}
+
+      Write, in {{in_language}}, as well-formed Markdown with these short sections:
+      **Agree**: the points all or most answers share.
+      **Differ**: where they disagree or contradict each other, naming the answers by their labels.
+      **Doubtful**: claims that look wrong, invented or out of date (say why), or "none noticed".
+      **Most complete**: which answer covers the question best, and what it still misses.
+      Be concise and specific; do not repeat the answers.
+  ports:
+  - trigger
+  - complete
+  - in_question
+  - in_answers
+  - in_language
+  - out_comparison
+- id: wf_exit
+  type: OUTPUT
+  ports:
+  - trigger
+  - exit
+  - in_comparison
+edges:
+- {source: wf_entry.entry, target: compare.trigger, type: triggers}
+- {source: wf_entry.out_question, target: compare.in_question, type: binds}
+- {source: wf_entry.out_answers, target: compare.in_answers, type: binds}
+- {source: wf_entry.out_language, target: compare.in_language, type: binds}
+- {source: compare.complete, target: wf_exit.trigger, type: triggers}
+- {source: compare.out_comparison, target: wf_exit.in_comparison, type: binds}

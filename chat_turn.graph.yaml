@@ -14,8 +14,24 @@ workflow:
     description: the new user message
   - name: last_n
     type: INTEGER
-    default: 10
+    default: 5
     description: how many recent turns (a question and its reply) the model sees
+  - name: language
+    type: TEXT
+    default: the same language as the most recent user message
+    description: the language the reply is written in, as a phrase that completes "Write the reply in ..."
+  - name: instructions
+    type: TEXT
+    default: ''
+    description: the chatbot's own instructions (a system prompt), e.g. "Answer as a patient teacher"; empty for none
+  - name: rules
+    type: TEXT
+    default: >-
+      Write well-formed Markdown: a blank line before every heading and list, one item per line, consistent numbering and styles.
+      When asked for resources (videos, repos, books, articles), give a full https:// URL as a Markdown link only if you are confident
+      it is real and stable (a well-known site's own page); never invent a URL and never give a search-results link
+      (such as youtube.com/results or google.com/search). If you are not sure of a resource's URL, name the resource without a link.
+    description: how to write the reply (format and links); the Multi-Chat page sends the image turns, which bypass this graph, the same text
   outputs:
   - name: reply
     type: TEXT
@@ -29,6 +45,9 @@ nodes:
   - out_history
   - out_question
   - out_last_n
+  - out_language
+  - out_instructions
+  - out_rules
 - id: add_question
   type: SOLVE
   config:
@@ -75,13 +94,18 @@ nodes:
     function: chat_reply
     prompt_inline: |-
       You are a helpful assistant engaged in a multi-turn conversation.
+      {{in_instructions}}
       The conversation so far is a JSON array of {"role", "content"} messages:
       {{in_trimmed}}
-      Reply to the most recent user message concisely and helpfully. Write the reply only, in Markdown.
+      Reply to the most recent user message helpfully. Write the reply only, in {{in_language}}.
+      {{in_rules}}
   ports:
   - trigger
   - complete
   - in_trimmed
+  - in_language
+  - in_instructions
+  - in_rules
   - out_reply
 - id: add_reply
   type: SOLVE
@@ -119,6 +143,9 @@ edges:
 - {source: wf_entry.out_last_n, target: trim.in_last_n, type: binds}
 - {source: trim.complete, target: answer.trigger, type: triggers}
 - {source: trim.out_trimmed, target: answer.in_trimmed, type: binds}
+- {source: wf_entry.out_language, target: answer.in_language, type: binds}
+- {source: wf_entry.out_instructions, target: answer.in_instructions, type: binds}
+- {source: wf_entry.out_rules, target: answer.in_rules, type: binds}
 - {source: answer.complete, target: add_reply.trigger, type: triggers}
 - {source: add_question.out_history, target: add_reply.in_history, type: binds}
 - {source: answer.out_reply, target: add_reply.in_reply, type: binds}

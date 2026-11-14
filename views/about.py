@@ -54,17 +54,22 @@ Source: [{REPO}]({REPO}) · GraphLang: [{STACK[0][2]}]({STACK[0][2]})
 
 st.header("What you can do")
 st.markdown("""
-- **Compare models.** Choose 1 to 5 chatbots, each with its own provider, model and "turns it sees" (how many recent
-  questions and replies it is sent). Every question goes to all of them in parallel; each keeps its own conversation.
-- **Providers.** `anthropic` (through the Claude CLI, billed), `openrouter` (hundreds of hosted models, billed, needs
-  `OPENROUTER_API_KEY`) and `ollama` (local models, free).
-- **Config LLM page.** Fetch each provider's model list and tick the models you want; only those are options in the Model
-  dropdown. The choice is saved in `~/.graflang/chat_models.json`.
-- **Line up the answers.** Every question is numbered (`[4] what is ...`) in all columns, so the same question is easy to find.
-  Each answer shows its model and response time. Each column scrolls on its own; pane height and font size are settings.
-- **Give feedback.** Under each answer: 📋 copies its Markdown, 👍 and 👎 record your judgement (click again to undo).
-- **Export.** One YAML file, organised by question: for each, every chatbot's id, `<provider>:<model-id>`, response time,
-  response (as multi-line YAML, so nothing needs quoting) and your feedback (1, -1 or 0).
+- **Compare models, and prompts.** Choose 1 to 5 chatbots, each with its own provider, model, "turns it sees", language, temperature
+  and instructions. Every question goes to all of them in parallel; each keeps its own conversation, and each answer shows up in its
+  column as soon as it arrives.
+- **Providers.** `anthropic` (through the Claude CLI), `anthropic-api`, `openrouter`, `openai`, `deepseek`, `qwen` (all billed, each
+  needs its API key) and `ollama` (local models, free).
+- **Settings page.** Fetch each provider's model list and tick the models you want; only those are options in the Model dropdown.
+- **Line up the answers.** Every question is numbered (`[4] what is ...`) in all columns. Each answer shows its model, response time,
+  tokens and cost; the sidebar adds them up for the chat.
+- **Judge.** Under each answer: 🔊 reads it aloud, 📋 copies its Markdown, 👍 and 👎 record your judgement, 🏆 marks the best answer to
+  the question. **Blind mode** hides the model names until you have picked. **Compare answers** asks a model where the answers agree,
+  differ or look doubtful.
+- **Retry, redo, batch, presets.** Retry a chatbot that failed; ↻ asks a chatbot its latest question again; a batch file asks many
+  questions in a row; a preset saves a line-up of chatbots.
+- **Review page.** Every chat is saved (SQLite, `~/.graflang/multi_chat.db`): search, read, go on with a chat, disable or delete it.
+  The leaderboard shows each model's 🏆 wins, thumbs, time and cost.
+- **Export.** YAML (complete, imports again) or Markdown, organised by question.
 """)
 
 st.header("How a question travels")
@@ -86,8 +91,11 @@ st.markdown("""
 |---|---|---|
 | `add_question` | `SOLVE` (Python kernel) | appends the question to the history |
 | `trim` | `SOLVE` (Python kernel) | keeps the last N turns, so a long chat stays within the model's context |
-| `answer` | `GENERATE` | one LLM call, capped at one per run (`MeteredLLM(max_calls=1)`) |
+| `answer` | `GENERATE` | one LLM call, capped at one per run (`MeteredLLM(max_calls=1)`), with the chatbot's language, instructions and the formatting rules (graph inputs) |
 | `add_reply` | `SOLVE` (Python kernel) | appends the reply, giving the new history |
+
+A second graph, `compare_answers.graph.yaml`, is a single `GENERATE` node: it compares the answers to one question. Questions
+with images go straight to the model instead (the graph passes text only), with the same instructions and rules.
 
 Because the logic is a graph, it can be checked, drawn and run without this page:
 
@@ -112,4 +120,7 @@ see its [README]({STACK[0][2]}) for what is implemented and what is still aspira
 st.header("The stack")
 st.markdown("| Package | Version | Role |\n|---|---|---|\n" + "\n".join(
     f"| [{name}]({url}) | {version(name)} | {role} |" for name, role, url in STACK))
-st.caption("Multi-Chat is released under the Apache License 2.0.")
+st.write("")
+st.write("")
+st.markdown("<div style='text-align: center; opacity: 0.6; font-size: 0.875rem'>Multi-Chat is released under the Apache License 2.0. · Built with ❤️ by Digital-Duck and Claude-Code</div>",
+            unsafe_allow_html=True)
