@@ -115,3 +115,21 @@ def test_note_needs_a_title():
     import pytest
     with pytest.raises(ValueError):
         chat_db.create_note("  ")
+
+
+def test_schema_file_matches_code(tmp_path):
+    """src/schema/multi_chat.sql is a reference copy of chat_db.SCHEMA: same tables, columns (type, default, keys) and indexes."""
+    import sqlite3
+    from pathlib import Path
+
+    def shape(script: str) -> dict:
+        con = sqlite3.connect(":memory:")
+        con.executescript(script)
+        out = {}
+        for (name,) in con.execute("SELECT name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%' ORDER BY name"):
+            out[name] = (con.execute(f"PRAGMA table_info({name})").fetchall(), con.execute(f"PRAGMA foreign_key_list({name})").fetchall(),
+                         con.execute(f"PRAGMA index_info({name})").fetchall())
+        return out
+
+    sql = (Path(__file__).resolve().parent.parent / "src" / "schema" / "multi_chat.sql").read_text()
+    assert shape(sql) == shape(chat_db.SCHEMA)
