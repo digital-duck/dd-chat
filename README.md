@@ -2,6 +2,8 @@
 
 Ask one question, let up to five LLMs answer it side by side. A small, working showcase of [GraphLang](https://github.com/digital-duck/graflang): the chat logic is a graph file (`chat_turn.graph.yaml`), and this Streamlit app only draws the conversation and runs that graph, once per chatbot per question.
 
+![Multi-Chat: three chatbots (Claude Opus, Claude Sonnet replying in Chinese, and a local Ollama model) answering the same question side by side](docs/images/multi-chat-1.png)
+
 ## Features
 
 - **Compare models**: 1 to 5 chatbots, each with its own provider, model, "turns it sees", language, temperature and instructions (a system prompt, so you can compare prompts as well as models). Every question goes to all of them in parallel, each keeps its own conversation, and each answer appears in its column as soon as it arrives.
@@ -19,7 +21,7 @@ Ask one question, let up to five LLMs answer it side by side. A small, working s
 - **Review page**: every chat is saved; search them, read them, open one on the Chats page to go on, disable or delete it, import an export file. A leaderboard shows, per model, the 🏆 wins, thumbs, time and cost.
 - **About page**: how a question travels through the graph, and the stack behind it.
 
-## Install and run
+## Quick Setup
 
 Python 3.11 or newer.
 
