@@ -15,6 +15,7 @@ from pathlib import Path
 import streamlit as st
 
 import chat_db
+import env_keys
 
 ANTHROPIC = {"fable": "claude-fable-5-2", "opus": "claude-opus-5-5", "sonnet": "claude-sonnet-5-5", "haiku": "claude-haiku-5-5"}
 
@@ -42,7 +43,7 @@ PROVIDERS = {name: p.adapter for name, p in INFO.items()}       # shown name -> 
 ADAPTER_PROVIDER = {p.adapter: name for name, p in INFO.items()}
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/models"
-CONFIG = Path(os.environ.get("GRAFLANG_HOME") or Path.home() / ".graflang") / "chat_models.json"
+CONFIG = Path(os.environ.get("DD_CHAT_HOME") or Path.home() / ".dd-chat") / "chat_models.json"
 
 
 def _get_json(url: str, body: dict | None = None, timeout: float = 10, headers: dict | None = None) -> dict:
@@ -55,6 +56,12 @@ def missing_key(provider: str) -> str | None:
     """The name of the API-key variable `provider` needs and does not have, else None."""
     env = INFO[provider].key_env
     return env if env and not os.environ.get(env) else None
+
+
+def key_source(provider: str) -> str | None:
+    """Where `provider`'s API key comes from (".env", "environment", "typed here"), None when it has none; see env_keys.py."""
+    env = INFO[provider].key_env
+    return env_keys.source(env) if env else None
 
 
 @st.cache_data(ttl=60, show_spinner=False)

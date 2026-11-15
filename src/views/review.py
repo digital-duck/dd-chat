@@ -57,7 +57,7 @@ def open_in_chats(session_id: int) -> None:
     st.switch_page("views/multi_chat.py")
 
 
-st.title("🔍 Review")
+st.header("🔍 Review")
 chat_font = int(state.get("font_size") or chat_db.get_setting("multi_chat_settings", {}).get("font_size") or CHAT_FONT)     # the size set on the Chats page
 st.markdown(f"<style>[data-testid='stChatMessage'] :is(p, li, code, td, th) {{ font-size: {chat_font}px; }}</style>", unsafe_allow_html=True)
 

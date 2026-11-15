@@ -2,13 +2,30 @@
 
 Ask one question, let up to five LLMs answer it side by side. A small, working showcase of [GraphLang](https://github.com/digital-duck/graflang): the chat logic is a graph file (`chat_turn.graph.yaml`), and this Streamlit app only draws the conversation and runs that graph, once per chatbot per question.
 
-![Multi-Chat: three chatbots (Claude Opus, Claude Sonnet replying in Chinese, and a local Ollama model) answering the same question side by side](docs/images/multi-chat-1.png)
+![dd-chat: three chatbots (Claude Opus, Claude Sonnet replying in Chinese, and a local Ollama model) answering the same question side by side](docs/images/dd-chat-1.png)
+
+## Install
+
+```bash
+pip install dd-chat
+dd-chat            # opens the app; chats are saved in ~/.dd-chat (or $DD_CHAT_HOME)
+```
+
+## API keys
+
+Copy `example.env` to `.env` (in the folder where you start `dd-chat`, or to `~/.dd-chat/.env`) and fill in the keys you use. A key is taken from the first of (python-dotenv's convention: the environment beats `.env`, which only supplies defaults):
+
+1. a key typed on the Settings page (kept in memory until the app stops, never saved),
+2. the environment variables of the shell, e.g. `OPENAI_API_KEY=sk-... dd-chat` for one run,
+3. the `.env` file (an empty value counts as not set).
+
+The `anthropic` (Claude CLI) and `ollama` providers need no key.
 
 ## Features
 
 - **Compare models**: 1 to 5 chatbots, each with its own provider, model, "turns it sees", language, temperature and instructions (a system prompt, so you can compare prompts as well as models). Every question goes to all of them in parallel, each keeps its own conversation, and each answer appears in its column as soon as it arrives.
 - **Providers**: `anthropic` (through the Claude CLI), `anthropic-api`, `openrouter`, `openai`, `deepseek`, `qwen`, `ollama`.
-- **Settings page**: fetch each provider's model list, tick the models you want; only those appear in the Model dropdown (saved in the SQLite database `~/.graflang/multi_chat.db`).
+- **Settings page**: fetch each provider's model list, tick the models you want; only those appear in the Model dropdown (saved in the SQLite database `~/.dd-chat/multi_chat.db`).
 - **Easy to line up**: numbered questions (`[4] what is ...`) in every column, response time, tokens and cost per answer, totals per chat, a scrollbar per chatbot, adjustable pane height and font size.
 - **Feedback and blind mode**: 📋 copy, 🔊 read aloud, 👍 / 👎, 🏆 best answer per question. Blind mode hides the model names until you pick the best answer.
 - **Compare answers**: a model of your choice compares the answers to one question (agree, differ, doubtful, most complete); it is a second graph, `compare_answers.graph.yaml`.
@@ -26,8 +43,8 @@ Ask one question, let up to five LLMs answer it side by side. A small, working s
 Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/digital-duck/multi-chat.git
-cd multi-chat
+git clone https://github.com/digital-duck/dd-chat.git
+cd dd-chat
 
 python -m venv .venv && source .venv/bin/activate
 # conda create -n chat python=3.11
@@ -51,7 +68,7 @@ What each provider needs:
 
 Costs shown are what the provider reports, or OpenRouter's prices times the tokens; the Claude CLI's cost is not known (its token counts are estimates).
 
-`requirements.txt` installs GraphLang from GitHub, because this app needs `graphlang.grafr.metering`, which the PyPI release (0.1.1) does not have yet.
+This app needs `graflang>=0.2.1` (it uses `graphlang.grafr.metering`).
 
 ## The graph
 
@@ -83,6 +100,8 @@ The code is in `src/`; the root keeps the docs, requirements, tests and `.stream
 | `src/chat_engine.py` | runs the graphs (and the image turns, which bypass them); tokens, cost, kernel reuse |
 | `src/chat_db.py` | SQLite: sessions, messages, comparisons, settings |
 | `src/chat_models.py` | providers, their model lists and the saved selection |
+| `src/env_keys.py` | where API keys come from: typed on Settings > environment > `.env` |
+| `src/cli.py` | the `dd-chat` command |
 | `src/chat_export.py` | YAML and Markdown export, YAML import |
 | `src/chat_render.py` | how an answer is shown (both pages) |
 | `src/link_check.py` | the dead-link check |

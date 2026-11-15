@@ -5,9 +5,10 @@ import pandas as pd
 import streamlit as st
 
 import chat_db
+import env_keys
 import chat_models as cm
 
-st.title("⚙️ Settings")
+st.header("⚙️ Settings")
 st.caption(f"Tick the models each provider may use; only those are options in the Model dropdown of the Chats page. Saved in the SQLite database `{chat_db.DB}`.")
 
 
@@ -21,9 +22,19 @@ def panel(provider: str) -> None:
         cm.openrouter_models.clear()
         cm.ollama_models.clear()
         cm.openai_models.clear()
-    if cm.missing_key(provider):
-        st.warning(f"`{cm.missing_key(provider)}` is not set: " + ("the list loads, but " if provider == "openrouter" else "")
-                   + "a chatbot cannot call these models. Set it in the shell that starts Streamlit.")
+    key_env = cm.INFO[provider].key_env
+    if key_env:
+        where = cm.key_source(provider)
+        if where:
+            st.caption(f"🔑 `{key_env}` comes from {'the `.env` file' if where == '.env' else 'the environment' if where == 'environment' else 'what you typed here'} (typed beats environment beats `.env`).")
+        else:
+            st.warning(f"`{key_env}` is not set: " + ("the list loads, but " if provider == "openrouter" else "")
+                       + "a chatbot cannot call these models. Put it in a `.env` file (see `example.env`), set it in the shell, or type it below.")
+        typed = st.text_input(f"{key_env}: type a key to use instead (kept in memory until the app stops, not saved)", type="password", key=f"key_{provider}")
+        if typed != env_keys._typed.get(key_env, ""):
+            env_keys.set_typed(key_env, typed)
+            cm.openai_models.clear()
+            st.rerun()
     if not cm.can_refresh(provider):
         st.caption("This provider's models cannot be listed here: these are the known ones; add others by hand below.")
     try:

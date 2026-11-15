@@ -25,15 +25,17 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import yaml
+import env_keys  # noqa: F401  (loads .env into os.environ before any adapter reads a key)
 from graphlang.grafr.adapters import make_llm
 from graphlang.grafr.kernel import KernelPool
 from graphlang.grafr.metering import MeteredLLM
 from graphlang.grafr.runtime import GraphLangRuntime, load_graph
 
 ROOT = Path(__file__).resolve().parent
-TMP = ROOT.parent / "tmp"                   # the repo's tmp/ (git-ignored): the kernels' Unix sockets go here, not in the folder Streamlit started in
+# The kernels' Unix sockets go in the repo's tmp/ (git-ignored) when run from a checkout, else in ~/.dd-chat/tmp (an installed package must not write into site-packages); never the folder Streamlit started in.
+TMP = ROOT.parent / "tmp" if (ROOT.parent / "tests").is_dir() else Path(os.environ.get("DD_CHAT_HOME") or Path.home() / ".dd-chat") / "tmp"
 os.environ.setdefault("GRAFLANG_KERNEL_DIR", str(TMP))      # read by GraphLang when a kernel starts; an older GraphLang ignores it
-TMP.mkdir(exist_ok=True)
+TMP.mkdir(parents=True, exist_ok=True)
 TMP.chmod(0o700)                            # the sockets accept code: only this user may reach them
 GRAPH = ROOT / "chat_turn.graph.yaml"
 COMPARE_GRAPH = ROOT / "compare_answers.graph.yaml"

@@ -1,6 +1,6 @@
 """SQLite persistence for the app: chat sessions, and settings (Chats-page widgets, Settings-page model choices, presets).
 
-The file is `multi_chat.db` under the GraphLang home (`~/.graflang`, or $GRAFLANG_HOME). Tables:
+The file is `multi_chat.db` under the app's home folder (`~/.dd-chat`, or $DD_CHAT_HOME). Tables:
   settings(key, value)                one JSON value per key
   sessions(id, title, created, updated, disabled, rev)    disabled = 1: soft-deleted, hidden from the lists but kept;
                                       rev: bumped by every save, so two browser tabs cannot overwrite each other's chat (see save_session)
@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator
 
-DB = Path(os.environ.get("GRAFLANG_HOME") or Path.home() / ".graflang") / "multi_chat.db"
+DB = Path(os.environ.get("DD_CHAT_HOME") or Path.home() / ".dd-chat") / "multi_chat.db"
 COLUMNS = {             # message field -> column type; every field but role and content may be missing from a message
     "role": "TEXT NOT NULL", "content": "TEXT NOT NULL", "shown": "TEXT", "q": "INTEGER", "model": "TEXT", "seconds": "REAL",
     "feedback": "INTEGER DEFAULT 0", "est_tokens": "INTEGER", "ctx_tokens": "INTEGER", "language": "TEXT", "links": "TEXT",

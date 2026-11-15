@@ -1,4 +1,4 @@
-"""Tests run against a temporary database, never ~/.graflang/multi_chat.db."""
+"""Tests run against a temporary database, never ~/.dd-chat/multi_chat.db."""
 import sys
 from pathlib import Path
 

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dd-chat"
+version = "0.1.2"
+description = "Ask one question, let up to five LLMs answer side by side: a Streamlit showcase of GraphLang"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Digital Duck" }]
+keywords = ["llm", "chat", "streamlit", "graphlang", "compare"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+]
+dependencies = [
+    "graflang[kernel]>=0.2.1",
+    "streamlit>=1.50",
+    "pandas>=2.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "streamlit-aggrid>=1.1",
+    "pypdf>=4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/digital-duck/dd-chat"
+Issues = "https://github.com/digital-duck/dd-chat/issues"
+
+[project.scripts]
+dd-chat = "dd_chat.cli:main"
+
+# The flat modules in src/ import each other by bare name (Streamlit puts the script's folder on sys.path), so the whole folder ships as one package.
+[tool.setuptools]
+packages = ["dd_chat"]
+package-dir = { dd_chat = "src" }
+
+[tool.setuptools.package-data]
+dd_chat = ["*.yaml", "views/*.py"]

@@ -43,7 +43,7 @@ def graph_dot(doc: dict) -> str:
     return "\n".join(lines + ["}"])
 
 
-st.title("ℹ️ About Multi-Chat")
+st.header("ℹ️ About Multi-Chat")
 st.markdown(f"""
 **Multi-Chat** asks one question and lets up to five chatbots answer it at the same time, side by side, so you can compare models
 on the same prompts. It is also a small, working showcase of **[GraphLang]({STACK[0][2]})**: the chat logic is not Python code in
@@ -67,7 +67,7 @@ st.markdown("""
   differ or look doubtful.
 - **Retry, redo, batch, presets.** Retry a chatbot that failed; ↻ asks a chatbot its latest question again; a batch file asks many
   questions in a row; a preset saves a line-up of chatbots.
-- **Review page.** Every chat is saved (SQLite, `~/.graflang/multi_chat.db`): search, read, go on with a chat, disable or delete it.
+- **Review page.** Every chat is saved (SQLite, `~/.dd-chat/multi_chat.db`): search, read, go on with a chat, disable or delete it.
   The leaderboard shows each model's 🏆 wins, thumbs, time and cost.
 - **Export.** YAML (complete, imports again) or Markdown, organised by question.
 """)
