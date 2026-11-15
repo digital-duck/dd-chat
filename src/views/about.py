@@ -69,6 +69,7 @@ st.markdown("""
   questions in a row; a preset saves a line-up of chatbots.
 - **Review page.** Every chat is saved (SQLite, `~/.dd-chat/multi_chat.db`): search, read, go on with a chat, disable or delete it.
   The leaderboard shows each model's 🏆 wins, thumbs, time and cost.
+- **Notes page.** Notes with attached documents or images, in the same database: pick one in the table to edit it below; Delete hides a note (restore it with *Show deleted notes*).
 - **Export.** YAML (complete, imports again) or Markdown, organised by question.
 """)
 

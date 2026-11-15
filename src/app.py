@@ -9,6 +9,7 @@ st.set_page_config(page_title="Multi-Chat · GraphLang", page_icon="💬", layou
 pages = [
     st.Page("views/multi_chat.py", title="Chats", icon="💬", default=True),
     st.Page("views/review.py", title="Review", icon="🔍"),
+    st.Page("views/notes.py", title="Notes", icon="📝"),
     st.Page("views/config_llm.py", title="Settings", icon="⚙️"),
     st.Page("views/about.py", title="About", icon="ℹ️"),
 ]

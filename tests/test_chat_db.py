@@ -91,3 +91,27 @@ def test_settings():
     assert chat_db.get_setting("k") == {"a": [1]}
     chat_db.delete_setting("k")
     assert chat_db.get_setting("k", "none") == "none"
+
+
+def test_notes_create_update_soft_delete():
+    note_id = chat_db.create_note("Title", "one line", "# text", [("a.png", "image/png", b"\x89PNG"), ("b.txt", None, b"hello")])
+    assert [n["files"] for n in chat_db.list_notes()] == [2]
+    assert chat_db.update_note(note_id, "New title", "d", "body", [("c.pdf", "application/pdf", b"%PDF")])
+    note = chat_db.get_note(note_id)
+    assert (note["title"], note["note"]) == ("New title", "body")
+    files = chat_db.note_files(note_id)
+    assert [f["name"] for f in files] == ["a.png", "b.txt", "c.pdf"] and files[1]["size"] == 5
+    assert chat_db.note_file_data(files[1]["id"]) == b"hello"
+    chat_db.delete_note_file(files[0]["id"])
+    assert len(chat_db.note_files(note_id)) == 2
+    assert chat_db.list_notes(search="c.pdf")[0]["id"] == note_id and not chat_db.list_notes(search="nowhere")
+    chat_db.set_note_disabled(note_id, True)
+    assert not chat_db.list_notes() and chat_db.list_notes(include_disabled=True)[0]["disabled"] == 1
+    assert len(chat_db.note_files(note_id)) == 2            # soft delete keeps the files
+    assert not chat_db.update_note(999, "x", "", "")
+
+
+def test_note_needs_a_title():
+    import pytest
+    with pytest.raises(ValueError):
+        chat_db.create_note("  ")

@@ -36,6 +36,7 @@ The `anthropic` (Claude CLI) and `ollama` providers need no key.
 - **Dead links flagged**: the links in each answer are checked, and dead ones get ❌ (addresses on your own machine or network are never requested).
 - **Export**: YAML (`GraphLang-YYMMDD-HHMMSS.chat.yaml`, complete, can be imported again) or Markdown, organised by question.
 - **Review page**: every chat is saved; search them, read them, open one on the Chats page to go on, disable or delete it, import an export file. A leaderboard shows, per model, the 🏆 wins, thumbs, time and cost.
+- **Notes page**: notes with a title, description, Markdown text and attached files (documents, images), kept in the same SQLite database; a table on top, the selected note's form below (Create, Update, Delete; a deleted note is hidden, not removed, and can be restored).
 - **About page**: how a question travels through the graph, and the stack behind it.
 
 ## Quick Setup
@@ -93,6 +94,7 @@ The code is in `src/`; the root keeps the docs, requirements, tests and `.stream
 | `src/app.py` | entry point: the four pages |
 | `src/views/multi_chat.py` | the Chats page |
 | `src/views/review.py` | the Review page: saved chats, import, leaderboard |
+| `src/views/notes.py` | the Notes page: notes with attachments, create/update/soft delete |
 | `src/views/config_llm.py` | the Settings page |
 | `src/views/about.py` | the About page |
 | `src/chat_turn.graph.yaml` | one chat turn as a GraphLang graph |

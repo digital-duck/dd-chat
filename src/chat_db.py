@@ -6,6 +6,8 @@ The file is `multi_chat.db` under the app's home folder (`~/.dd-chat`, or $DD_CH
                                       rev: bumped by every save, so two browser tabs cannot overwrite each other's chat (see save_session)
   messages(session_id, bot, pos, role, content, ...)      one row per message; MSG_FIELDS lists the columns
   judgements(session_id, q, judge, content, seconds)      a model's comparison of the answers to question q
+  notes(id, title, description, note, created, updated, disabled)   the Notes page; disabled = 1: soft-deleted, as for sessions
+  note_files(id, note_id, name, mime, size, data, created)          a note's attachments, the file bytes kept in the database (one file to back up)
 `bot` is the chatbot number minus one; `pos` the message's place in that chatbot's history.
 """
 from __future__ import annotations
@@ -38,6 +40,11 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS judgements (
   session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, q INTEGER NOT NULL, judge TEXT, content TEXT NOT NULL, seconds REAL,
   PRIMARY KEY (session_id, q));
+CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '', created TEXT NOT NULL, updated TEXT NOT NULL, disabled INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS note_files (id INTEGER PRIMARY KEY AUTOINCREMENT, note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, mime TEXT, size INTEGER NOT NULL, data BLOB NOT NULL, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS note_files_note ON note_files(note_id);
 """
 _ready: set[str] = set()                # databases whose schema this process has already checked
 
@@ -248,3 +255,82 @@ def leaderboard() -> list[dict]:
         d["win_rate"] = round(d["wins"] / d["contests"], 2) if d["contests"] else None
         out.append(d)
     return out
+
+
+# ---- notes (the Notes page)
+
+Attachment = tuple[str, str | None, bytes]     # (file name, MIME type, bytes), as an upload gives them
+
+
+def _add_files(con: sqlite3.Connection, note_id: int, files: list[Attachment]) -> None:
+    con.executemany("INSERT INTO note_files(note_id, name, mime, size, data, created) VALUES(?, ?, ?, ?, ?, ?)",
+                    [(note_id, name, mime, len(data), sqlite3.Binary(data), _now()) for name, mime, data in files])
+
+
+def create_note(title: str, description: str = "", note: str = "", files: list[Attachment] = ()) -> int:
+    """A new note with its attachments; returns its id. A note needs a title (the table would show an empty row otherwise)."""
+    if not title.strip():
+        raise ValueError("a note needs a title")
+    with connect() as con:
+        note_id = int(con.execute("INSERT INTO notes(title, description, note, created, updated) VALUES(?, ?, ?, ?, ?)",
+                                  (title.strip(), description, note, _now(), _now())).lastrowid or 0)
+        _add_files(con, note_id, list(files))
+    return note_id
+
+
+def update_note(note_id: int, title: str, description: str, note: str, files: list[Attachment] = ()) -> bool:
+    """Rewrite a note's text and add attachments (existing ones stay; remove one with delete_note_file). False if there is no such note."""
+    if not title.strip():
+        raise ValueError("a note needs a title")
+    with connect() as con:
+        moved = con.execute("UPDATE notes SET title = ?, description = ?, note = ?, updated = ? WHERE id = ?",
+                            (title.strip(), description, note, _now(), note_id)).rowcount
+        if moved:
+            _add_files(con, note_id, list(files))
+    return bool(moved)
+
+
+def get_note(note_id: int) -> dict | None:
+    with connect() as con:
+        row = con.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def list_notes(include_disabled: bool = False, search: str = "") -> list[dict]:
+    """Newest first, without the note text or file bytes: id, title, description, created, updated, disabled, files (how many).
+    With `search`, only the notes whose title, description, text or an attachment's name contains it (any case)."""
+    where, args = "(? OR n.disabled = 0)", [int(include_disabled)]
+    if search.strip():
+        where += (" AND (n.title LIKE ? ESCAPE '\\' OR n.description LIKE ? ESCAPE '\\' OR n.note LIKE ? ESCAPE '\\'"
+                  " OR EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id AND f.name LIKE ? ESCAPE '\\'))")
+        args += [_like(search.strip())] * 4
+    with connect() as con:
+        rows = con.execute(f"""
+            SELECT n.id, n.title, n.description, n.created, n.updated, n.disabled,
+                   (SELECT COUNT(*) FROM note_files f WHERE f.note_id = n.id) AS files
+            FROM notes n WHERE {where} ORDER BY n.updated DESC, n.id DESC""", args).fetchall()
+    return [dict(r) for r in rows]
+
+
+def set_note_disabled(note_id: int, disabled: bool) -> None:
+    """Soft delete: a disabled note is hidden from the Notes table (unless asked for); its text and files stay."""
+    with connect() as con:
+        con.execute("UPDATE notes SET disabled = ?, updated = ? WHERE id = ?", (int(disabled), _now(), note_id))
+
+
+def note_files(note_id: int) -> list[dict]:
+    """A note's attachments, oldest first, without their bytes: id, name, mime, size, created."""
+    with connect() as con:
+        return [dict(r) for r in con.execute("SELECT id, name, mime, size, created FROM note_files WHERE note_id = ? ORDER BY id", (note_id,))]
+
+
+def note_file_data(file_id: int) -> bytes:
+    with connect() as con:
+        row = con.execute("SELECT data FROM note_files WHERE id = ?", (file_id,)).fetchone()
+    return bytes(row["data"]) if row else b""
+
+
+def delete_note_file(file_id: int) -> None:
+    """Remove one attachment for good (the note itself is only ever soft-deleted)."""
+    with connect() as con:
+        con.execute("DELETE FROM note_files WHERE id = ?", (file_id,))
