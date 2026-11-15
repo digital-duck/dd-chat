@@ -8,7 +8,7 @@ import streamlit as st
 import yaml
 
 GRAPH = Path(__file__).resolve().parent.parent / "chat_turn.graph.yaml"
-REPO = "https://github.com/digital-duck/multi-chat"
+REPO = "https://github.com/digital-duck/dd-chat"
 STACK = [      # package, what it does here, repository
     ("graflang", "the GraphLang runtime (`graphlang` package): loads `chat_turn.graph.yaml` and runs it as token-passing dataflow", "https://github.com/digital-duck/graflang"),
     ("zinet", "graph code shared with GraphLang (drawing, graph algorithms); not used directly by this app", "https://github.com/digital-duck/zinet"),    
