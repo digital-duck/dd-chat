@@ -4,8 +4,8 @@ from streamlit.testing.v1 import AppTest
 import chat_db
 
 
-def page(path="app.py"):
-    at = AppTest.from_file("../app.py", default_timeout=30)
+def page():
+    at = AppTest.from_file("../src/app.py", default_timeout=30)
     at.run()
     return at
 

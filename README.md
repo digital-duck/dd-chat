@@ -32,7 +32,7 @@ python -m venv .venv && source .venv/bin/activate
 # conda activate chat
 
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run src/app.py        # from the repo root, so .streamlit/config.toml applies
 ```
 
 What each provider needs:
@@ -60,28 +60,30 @@ add_question (SOLVE) -> trim (SOLVE) -> answer (GENERATE) -> add_reply (SOLVE)
 The history and the question go in (with the chatbot's language, instructions and the formatting rules); the question is appended, the history is trimmed to the last N turns, the model replies (one call, capped at one per run), and the reply and the new history come out. The same graph runs without the app:
 
 ```bash
-graf validate chat_turn.graph.yaml
-graf run chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 \
+graf validate src/chat_turn.graph.yaml
+graf run src/chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 \
     --param question="What is a graph?" --param history='[]'
 ```
 
 ## Layout
 
+The code is in `src/`; the root keeps the docs, requirements, tests and `.streamlit/config.toml`.
+
 | Path | What |
 |---|---|
-| `app.py` | entry point: the four pages |
-| `views/multi_chat.py` | the Chats page |
-| `views/review.py` | the Review page: saved chats, import, leaderboard |
-| `views/config_llm.py` | the Settings page |
-| `views/about.py` | the About page |
-| `chat_turn.graph.yaml` | one chat turn as a GraphLang graph |
-| `compare_answers.graph.yaml` | a comparison of the answers to one question |
-| `chat_engine.py` | runs the graphs (and the image turns, which bypass them); tokens, cost, kernel reuse |
-| `chat_db.py` | SQLite: sessions, messages, comparisons, settings |
-| `chat_models.py` | providers, their model lists and the saved selection |
-| `chat_export.py` | YAML and Markdown export, YAML import |
-| `chat_render.py` | how an answer is shown (both pages) |
-| `link_check.py` | the dead-link check |
+| `src/app.py` | entry point: the four pages |
+| `src/views/multi_chat.py` | the Chats page |
+| `src/views/review.py` | the Review page: saved chats, import, leaderboard |
+| `src/views/config_llm.py` | the Settings page |
+| `src/views/about.py` | the About page |
+| `src/chat_turn.graph.yaml` | one chat turn as a GraphLang graph |
+| `src/compare_answers.graph.yaml` | a comparison of the answers to one question |
+| `src/chat_engine.py` | runs the graphs (and the image turns, which bypass them); tokens, cost, kernel reuse |
+| `src/chat_db.py` | SQLite: sessions, messages, comparisons, settings |
+| `src/chat_models.py` | providers, their model lists and the saved selection |
+| `src/chat_export.py` | YAML and Markdown export, YAML import |
+| `src/chat_render.py` | how an answer is shown (both pages) |
+| `src/link_check.py` | the dead-link check |
 | `tests/` | `pytest tests` (no model is called) |
 
 ## Tests

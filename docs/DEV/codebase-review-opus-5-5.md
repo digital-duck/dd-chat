@@ -173,7 +173,7 @@ Environment note: `streamlit-aggrid` (already in `requirements.txt`) was missing
 
 ### Manual test checklist
 
-Restart the app first (`streamlit run app.py`) so the new modules load. On first use the existing database gains new columns (additive only). Use Ollama models for free runs.
+Restart the app first, from the repo root (`streamlit run src/app.py`; the code moved to `src/`), so the new modules load. On first use the existing database gains new columns (additive only). Use Ollama models for free runs.
 
 1. **Ask**: 3 chatbots and one question. Each column fills in as its answer arrives; captions show seconds, tokens and cost; the sidebar shows the chat's totals.
 2. **Twins**: give two chatbots the same model and settings, then ask twice. The second gets "same as chatbot N", and both columns keep the same number of turns.

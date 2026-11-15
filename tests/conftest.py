@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "src"))           # the app's modules, as `streamlit run src/app.py` sees them
 
 import chat_db  # noqa: E402
 

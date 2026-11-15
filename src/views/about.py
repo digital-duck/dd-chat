@@ -11,11 +11,11 @@ GRAPH = Path(__file__).resolve().parent.parent / "chat_turn.graph.yaml"
 REPO = "https://github.com/digital-duck/multi-chat"
 STACK = [      # package, what it does here, repository
     ("graflang", "the GraphLang runtime (`graphlang` package): loads `chat_turn.graph.yaml` and runs it as token-passing dataflow", "https://github.com/digital-duck/graflang"),
+    ("zinet", "graph code shared with GraphLang (drawing, graph algorithms); not used directly by this app", "https://github.com/digital-duck/zinet"),    
     ("dd-llm", "the LLM adapters behind `GENERATE`: `claude_cli`, `openrouter`, `ollama`", "https://github.com/digital-duck/dd-llm"),
     ("dd-logging", "run logs (GraphLang's logging layer)", "https://github.com/digital-duck/dd-logging"),
-    ("zinet", "graph code shared with GraphLang (drawing, graph algorithms); not used directly by this app", "https://github.com/digital-duck/zinet"),
+    ("streamlit", "python web app", "https://streamlit.io"),
     ("ipykernel", "the Python kernel that runs the graph's `SOLVE` nodes (`backend: kernel`)", "https://ipython.org"),
-    ("streamlit", "this web app", "https://streamlit.io"),
 ]
 
 
@@ -100,8 +100,8 @@ with images go straight to the model instead (the graph passes text only), with 
 Because the logic is a graph, it can be checked, drawn and run without this page:
 
 ```bash
-graf validate chat_turn.graph.yaml
-graf run chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 --param question="What is a graph?" --param history='[]'
+graf validate src/chat_turn.graph.yaml
+graf run src/chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 --param question="What is a graph?" --param history='[]'
 ```
 """)
 
@@ -111,10 +111,7 @@ GraphLang is a graph-first language for agentic workflows. The graph (YAML, `*.g
 ports, joined by `triggers` (control) and `binds` (data) edges. Node types include `GENERATE` (an LLM call), `SOLVE` and `ASSERT`
 (deterministic steps: an expression, a Python kernel, or any program), `FORK`/`JOIN` (explicit parallelism), `LOOP`, `GUARD` (policy
 checks) and `MUTATE` (a model proposes a change to the graph itself, applied only if it passes validation). Where LangGraph or
-AutoGen describe a graph in Python code, GraphLang keeps the graph as the source of truth.
-
-This app uses only a small, linear corner of that: one `GENERATE` between three `SOLVE` steps. GraphLang is an **early prototype**:
-see its [README]({STACK[0][2]}) for what is implemented and what is still aspirational.
+AutoGen describe a graph in Python code, GraphLang keeps the graph as the source of truth. See its [README]({STACK[0][2]}) for what is implemented and what is still aspirational. For a quick introduction, see this [demo slidedeck](https://github.com/digital-duck/graflang/blob/main/docs/DEMO/graflang-intro-20261105.pdf). 
 """)
 
 st.header("The stack")
@@ -122,5 +119,5 @@ st.markdown("| Package | Version | Role |\n|---|---|---|\n" + "\n".join(
     f"| [{name}]({url}) | {version(name)} | {role} |" for name, role, url in STACK))
 st.write("")
 st.write("")
-st.markdown("<div style='text-align: center; opacity: 0.6; font-size: 0.875rem'>Multi-Chat is released under the Apache License 2.0. · Built with ❤️ by Digital-Duck and Claude-Code</div>",
+st.markdown("<div style='text-align: center; opacity: 0.6; font-size: 0.875rem'>Multi-Chat is built with ❤️ by Digital-Duck and Claude-Code and released under the Apache License 2.0. </div>",
             unsafe_allow_html=True)

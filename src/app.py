@@ -1,6 +1,6 @@
 """Multi-Chat: ask one question, let several LLMs answer side by side. A showcase of GraphLang.
 
-    streamlit run app.py
+    streamlit run src/app.py        (from the repo root, so .streamlit/config.toml applies)
 """
 import streamlit as st
 

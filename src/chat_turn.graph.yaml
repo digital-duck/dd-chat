@@ -1,6 +1,6 @@
 # One turn of the chat: the history so far and a new question in, the reply and the new history out.
-# The Multi-Chat page (views/multi_chat.py) keeps the conversation and runs this graph once per chatbot per question;
-# the same graph runs from the command line: graf run chat_turn.graph.yaml --param question="..." --param history='[]'
+# The Multi-Chat page (src/views/multi_chat.py) keeps the conversation and runs this graph once per chatbot per question;
+# the same graph runs from the command line: graf run src/chat_turn.graph.yaml --param question="..." --param history='[]'
 version: 1.0-graph
 workflow:
   name: chat_turn

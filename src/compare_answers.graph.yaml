@@ -1,6 +1,6 @@
 # Compare the answers several chatbots gave to one question: where they agree, where they differ, and what looks wrong.
 # The Multi-Chat page runs it when you click "Compare" under the chats; it also runs from the command line:
-#   graf run compare_answers.graph.yaml --param question="..." --param answers="### Chatbot 1\n...\n\n### Chatbot 2\n..."
+#   graf run src/compare_answers.graph.yaml --param question="..." --param answers="### Chatbot 1\n...\n\n### Chatbot 2\n..."
 version: 1.0-graph
 workflow:
   name: compare_answers

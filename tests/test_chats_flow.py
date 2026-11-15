@@ -21,7 +21,7 @@ def calls(monkeypatch):
 
 
 def start(bots=2):
-    at = AppTest.from_file("../app.py", default_timeout=30)
+    at = AppTest.from_file("../src/app.py", default_timeout=30)
     at.session_state["bots"] = bots
     at.session_state["provider_0"] = at.session_state["provider_1"] = "anthropic"
     at.session_state["model_anthropic_0"] = "claude-opus-5-5"

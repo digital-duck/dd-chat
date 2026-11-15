@@ -1,7 +1,13 @@
 # The runtime must be GraphLang's main branch: this app uses graphlang.grafr.metering, which the PyPI release (0.1.1) does not have yet.
-graflang[kernel] @ git+https://github.com/digital-duck/graflang.git   # [kernel]: the Python kernel behind the graph's SOLVE nodes
+graflang[kernel] @ git+https://github.com/digital-duck/graflang.git   
+# [kernel]: the Python kernel behind the graph's SOLVE nodes
+
 streamlit>=1.50
 pandas>=2.0
 pyyaml>=6.0
-streamlit-aggrid>=1.1          # the chat history table on the Review page
-pypdf>=4.0                  # text from attached PDFs
+
+streamlit-aggrid>=1.1          
+# the chat history table on the Review page
+
+pypdf>=4.0                  
+# text from attached PDFs

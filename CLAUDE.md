@@ -10,13 +10,13 @@ A Streamlit app that sends one question to 1–5 LLM "chatbots" side by side. It
 
 ```bash
 pip install -r requirements-dev.txt      # Python 3.11+; requirements.txt for the app alone
-streamlit run app.py                     # the app
+streamlit run src/app.py                 # the app; run from the repo root so .streamlit/config.toml applies
 
 pytest tests                             # all tests; no model is called (mock adapter, fake ask, temp database)
 pytest tests/test_chat_db.py::test_second_tab_does_not_overwrite_first    # one test
 
-graf validate chat_turn.graph.yaml       # check a graph after editing it
-graf run chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 \
+graf validate src/chat_turn.graph.yaml   # check a graph after editing it
+graf run src/chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 \
     --param question="What is a graph?" --param history='[]'
 ```
 
@@ -24,7 +24,9 @@ Billed providers cost money: every question is one call per chatbot. To try chan
 
 ## Architecture
 
-- `app.py` registers four pages with `st.navigation`: Chats (`views/multi_chat.py`), Review (`views/review.py`), Settings (`views/config_llm.py`), About (`views/about.py`). Logic shared by pages lives in top-level modules; the page files hold UI.
+All code and both graphs live in `src/` (Streamlit puts `src/` on `sys.path`, so modules import each other flat, e.g. `import chat_db`); the root holds docs, requirements, `tests/` and `.streamlit/`. Paths below are relative to `src/`.
+
+- `app.py` registers four pages with `st.navigation`: Chats (`views/multi_chat.py`), Review (`views/review.py`), Settings (`views/config_llm.py`), About (`views/about.py`). Logic shared by pages lives in the modules beside `app.py`; the page files hold UI. `st.Page` / `st.switch_page` paths are relative to `app.py`.
 - **`chat_engine.py` asks the models and has no Streamlit code** (it runs in worker threads and tests). A text turn is one run of `chat_turn.graph.yaml` through `MeteredLLM(..., max_calls=1)`; the returned `Answer` carries reply, seconds, model ms, tokens and cost. Per-chatbot temperature is injected by the `_Tuned` wrapper (GraphLang reads temperature only from node config); instructions and formatting `rules` are graph inputs. The `rules` text lives only in the graph's input default and is read back for the image path. Image turns bypass the graph and call `dd_llm` directly, in OpenAI or Anthropic message format (`IMAGE_FORMATS`).
 - **Kernel reuse**: SOLVE nodes run in a Jupyter kernel that GraphLang starts per run. `chat_engine._kernels()` lends long-lived `_KeptPool`s and swaps them into `runtime.kernels` before `execute()` (an undocumented GraphLang attribute; falls back if missing). It cuts about 0.7 s to 0.03 s per run.
 - **Chats page round** (`run_round` in `views/multi_chat.py`): chatbots that would send identical input are asked once and the reply is copied (`shared_from`), so histories stay aligned; answers are drawn into each column's pane as futures complete; stragglers past the timeout are given up; failures store a `retry_{i}` job. Buttons (retry, redo ↻) set `state["pending"]`, handled after the panes are drawn so output lands in the right column.
@@ -37,5 +39,5 @@ Billed providers cost money: every question is one call per chatbot. To try chan
 
 - `chat_text.FONT_SIZE` must equal `baseFontSize` in `.streamlit/config.toml`.
 - `.streamlit/config.toml` disables the widget-state-duplication warning on purpose (saved values are restored into session state while widgets also have defaults).
-- Tests isolate the database through the autouse `temp_db` fixture in `tests/conftest.py`; page tests use `streamlit.testing.v1.AppTest` from the `../app.py` entrypoint.
+- Tests isolate the database through the autouse `temp_db` fixture in `tests/conftest.py`; `conftest.py` puts `src/` on `sys.path`; page tests use `streamlit.testing.v1.AppTest` from the `../src/app.py` entrypoint.
 - The code style is dense, with docstrings and inline comments written as plain-English explanations of *why*; follow it.
