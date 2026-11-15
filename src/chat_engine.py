@@ -7,13 +7,15 @@ A text turn is one run of `chat_turn.graph.yaml`; a comparison is one run of `co
 Kernels: the graph's SOLVE nodes run in a Python (Jupyter) kernel. GraphLang starts a kernel for each run and stops it at the end, which
 costs most of a second per chatbot per question. Here a few kernel pools are kept and lent to runs one at a time (`_kernels`); the
 runtime's own pool is swapped for a lent one before the run. This leans on `GraphLangRuntime.kernels`, an attribute GraphLang does not
-document: when it is missing the run simply starts its own kernel as before.
+document: when it is missing the run simply starts its own kernel as before. The kernels' sockets go in the repo's `tmp/`
+(`GRAFLANG_KERNEL_DIR`; set it yourself to choose another folder).
 """
 from __future__ import annotations
 
 import atexit
 import base64
 import json
+import os
 import queue
 import time
 from contextlib import contextmanager
@@ -29,6 +31,10 @@ from graphlang.grafr.metering import MeteredLLM
 from graphlang.grafr.runtime import GraphLangRuntime, load_graph
 
 ROOT = Path(__file__).resolve().parent
+TMP = ROOT.parent / "tmp"                   # the repo's tmp/ (git-ignored): the kernels' Unix sockets go here, not in the folder Streamlit started in
+os.environ.setdefault("GRAFLANG_KERNEL_DIR", str(TMP))      # read by GraphLang when a kernel starts; an older GraphLang ignores it
+TMP.mkdir(exist_ok=True)
+TMP.chmod(0o700)                            # the sockets accept code: only this user may reach them
 GRAPH = ROOT / "chat_turn.graph.yaml"
 COMPARE_GRAPH = ROOT / "compare_answers.graph.yaml"
 SAME_LANGUAGE = "the same language as the most recent user message"

@@ -69,7 +69,7 @@ graf run src/chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 \
 
 ## Layout
 
-The code is in `src/`; the root keeps the docs, requirements, tests and `.streamlit/config.toml`.
+The code is in `src/`; the root keeps the docs, requirements, tests and `.streamlit/config.toml`. Scratch files (the GraphLang kernels' sockets) go in `tmp/`, which git ignores.
 
 | Path | What |
 |---|---|

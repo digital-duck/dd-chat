@@ -1,3 +1,5 @@
+tmp/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -218,3 +220,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Multi-Chat: scratch files (the GraphLang kernels' Unix sockets)
+tmp/
+kernel-ipc-*
