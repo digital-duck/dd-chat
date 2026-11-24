@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dd-chat</title>
+<style>
+  :root {
+    --ink: #1c2330; --muted: #5b6678; --paper: #fbfbfa; --line: #dfe3ea;
+    --blue: #4f8df5; --gray: #8a919c; --green: #2e9e6b; --orange: #e8913a; --red: #d8473f;
+    --code-bg: #0f1623; --code-ink: #dbe4f3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #e9ebef; color: var(--ink);
+    font: 26px/1.42 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .deck { position: fixed; inset: 0 0 4.5vh 0; display: grid; place-items: center; }
+  .slide { display: none; width: min(96vw, 158vh); height: min(54vw, 89vh); background: var(--paper);
+    border-radius: 14px; box-shadow: 0 8px 40px rgba(20,30,50,.18); padding: 4.2% 5.5% 3.5%;
+    flex-direction: column; overflow: hidden; position: relative; }
+  .slide.on { display: flex; }
+  h1 { font-size: 2.5em; line-height: 1.1; margin: 0 0 .3em; letter-spacing: -.02em; }
+  h2 { font-size: 1.7em; margin: 0 0 .5em; letter-spacing: -.01em; }
+  h2::after { content: ""; display: block; width: 64px; height: 4px; background: var(--blue); border-radius: 2px; margin-top: .25em; }
+  h3 { font-size: 1.05em; margin: 0 0 .3em; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  p { margin: 0 0 .6em; }
+  ul { margin: 0; padding-left: 1.1em; }
+  li { margin: .3em 0; }
+  li > ul { font-size: .82em; margin-top: .1em; }
+  li::marker { color: var(--blue); }
+  .sub { color: var(--muted); font-size: 1.15em; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 3%; align-items: start; flex: 1; min-height: 0; }
+  .cols.wide-left { grid-template-columns: 1.25fr 1fr; }
+  .cols.wide-right { grid-template-columns: 1fr 1.25fr; }
+  pre, code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #eef0f4; padding: .05em .35em; border-radius: 4px; font-size: .88em; }
+  pre { background: var(--code-bg); color: var(--code-ink); padding: .7em .9em; border-radius: 10px; font-size: .66em; line-height: 1.45;
+    margin: 0 0 .6em; overflow: hidden; white-space: pre; }
+  pre .c { color: #7d8ba3; } pre .k { color: #8cc4ff; } pre .s { color: #a5e3b4; } pre .h { color: #ffcf7a; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .6em .9em; }
+  .tag { display: inline-block; font-size: .62em; font-weight: 700; padding: .12em .6em; border-radius: 99px; color: #fff; vertical-align: middle; }
+  .t-gen { background: var(--blue); } .t-io { background: var(--gray); } .t-sol { background: var(--green); }
+  .t-ctl { background: var(--orange); } .t-safe { background: var(--red); }
+  table { border-collapse: collapse; width: 100%; font-size: .92em; }
+  th, td { text-align: left; padding: .35em .6em; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .85em; text-transform: uppercase; letter-spacing: .05em; }
+  .big { font-size: 1.5em; line-height: 1.3; }
+  .center { text-align: center; }
+  .grow { flex: 1; min-height: 0; }
+  .foot { position: absolute; left: 5.5%; right: 5.5%; bottom: 1.8%; display: flex; justify-content: space-between;
+    color: #9aa3b2; font-size: .5em; }
+  .foot a { color: inherit; text-decoration: underline; }
+  .refs a { color: var(--blue); display: block; }
+  .refs li { font-size: .78em; }
+  .quiet { color: var(--muted); }
+  .good { color: var(--green); font-weight: 600; } .bad { color: var(--red); font-weight: 600; }
+  .demo { border-left: 6px solid var(--orange); background: #fff6ea; border-radius: 0 10px 10px 0; padding: .5em .9em; margin-bottom: .7em; font-size: .85em; }
+  .demo b { color: var(--orange); letter-spacing: .06em; font-size: .8em; text-transform: uppercase; }
+  .stack > * { margin-bottom: .45em; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 600 13px system-ui, sans-serif; }
+  #bar { position: fixed; left: 0; top: 0; height: 4px; background: var(--blue); width: 0; transition: width .2s; z-index: 5; }
+  #nav { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 6; }
+  #nav button { font: 600 14px system-ui, sans-serif; min-width: 44px; padding: 6px 12px; border-radius: 8px; border: 1px solid #c9ced8;
+    background: #fff; color: var(--ink); cursor: pointer; }
+  #nav button:hover { background: #eef2fb; border-color: var(--blue); }
+  #nav button:disabled { opacity: .4; cursor: default; background: #fff; border-color: #c9ced8; }
+  #nav #pdf { margin-left: 10px; }
+  #nav #tocbtn { margin-right: 10px; }
+  #hud { position: fixed; right: 14px; bottom: 10px; font-size: 13px; color: #7d8696; z-index: 5; }
+  .toc { columns: 3; column-gap: 3%; list-style: none; margin: 0; padding: 0; font-size: .8em; }
+  .toc li { break-inside: avoid; margin: .22em 0; padding: .12em .3em; border-radius: 6px; cursor: pointer; display: flex; gap: .6em; }
+  .toc li:hover { background: #eef2fb; }
+  .toc .n { color: var(--blue); font-weight: 700; min-width: 1.6em; text-align: right; }
+  .notes { display: none; }
+  #notes-box { display: none; }
+  body.show-notes #notes-box { display: block; position: fixed; left: 0; right: 0; bottom: 0; max-height: 34vh; overflow: auto;
+    background: #141a26; color: #d7deeb; padding: 14px 6vw; font-size: 17px; line-height: 1.5; z-index: 9; }
+  @page { size: 13.333in 7.5in; margin: 0; }
+  @media print {
+    html, body { background: #fff; height: auto; font-size: 24px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .deck { position: static; display: block; }
+    .slide { display: flex !important; width: 13.333in; height: 7.5in; border-radius: 0; box-shadow: none; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    pre { font-size: .58em; }       /* the page is smaller than the screen: keep code lines inside their box */
+    #bar, #hud, #nav, .notes, #notes-box { display: none !important; }
+  }
+</style>
+</head>
+<body data-title="dd-chat">
+<div id="bar"></div>
+<div id="nav">
+  <button id="tocbtn" title="Outline (T)">TOC</button>
+  <button id="first" title="First slide (Home)">&lt;&lt;</button>
+  <button id="prev" title="Previous slide (←)">&lt;</button>
+  <button id="next" title="Next slide (→ or space)">&gt;</button>
+  <button id="last" title="Last slide (End)">&gt;&gt;</button>
+  <button id="pdf" title="Opens the print dialog: choose Save as PDF, landscape, margins None, and tick Background graphics">PDF</button>
+</div>
+<div id="hud">← → or space · T outline · F fullscreen · N notes · O overview</div>
+<div class="deck" id="deck">
+<section class="slide">
+  <div style="margin:auto 0">
+    <h1>dd-chat</h1>
+    <p class="big">A Streamlit app: ask one question, and up to five LLMs answer it side by side.</p>
+    <p class="sub">A small, working showcase of GraphLang: the chat logic is a graph file.</p>
+  </div>
+  <div class="foot"><span><a href="https://github.com/digital-duck/dd-chat" target="_blank" rel="noopener">https://github.com/digital-duck/dd-chat</a></span><span></span></div>
+  <aside class="notes">dd-chat sends one question to between one and five chatbots and shows their answers in columns. It is also a showcase of GraphLang: each chat turn is a graph file, and the app runs that graph.</aside>
+</section>
+
+<section class="slide" id="outline">
+  <h2>Outline</h2>
+  <ol class="toc" id="toc"></ol>
+  <aside class="notes">The outline lists every slide title; click a line to jump.</aside>
+</section>
+
+<section class="slide">
+  <h2>The problem: comparing LLM answers</h2>
+  <ul>
+    <li>Answers from <b>different models</b> are hard to line up when you ask each one in a separate window.</li>
+    <li>The same goes for <b>different prompts</b> sent to the same model.</li>
+    <li>Each question to a billed provider <b>costs money</b>: one question is one call per chatbot.</li>
+    <li>To compare models fairly, you need the same question, the same history and the time and cost of every answer.</li>
+  </ul>
+  <aside class="notes">Comparing models by hand is slow, and the answers end up scattered across windows. Cost matters too: with Anthropic or OpenRouter, every question you ask is one billed call for each chatbot.</aside>
+</section>
+
+<section class="slide">
+  <h2>The idea: chat logic as a graph</h2>
+  <div class="cols">
+    <ul>
+      <li>One chat turn is a GraphLang graph: <code>src/chat_turn.graph.yaml</code>.</li>
+      <li>The app <b>only draws the conversation</b> and runs that graph once per chatbot per question.</li>
+      <li>Comparing answers is a second graph: <code>src/compare_answers.graph.yaml</code>.</li>
+    </ul>
+    <div class="card stack">
+      <h3>From the code review</h3>
+      <div>✔ chat logic kept apart from the UI</div>
+      <div>✔ the same file runs from <code>graf run</code></div>
+      <div>✔ "a fair demonstration of GraphLang rather than a Streamlit app with a graph added on"</div>
+    </div>
+  </div>
+  <aside class="notes">The central design choice is that the chat logic is not Python inside the app. It is a graph file, so the app keeps the conversations and runs the graph. A code review of the project noted that this keeps the logic separate from the UI.</aside>
+</section>
+
+<section class="slide">
+  <h2>One chat turn as a graph</h2>
+  <p class="big">
+    <span class="tag t-sol">add_question</span> →
+    <span class="tag t-sol">trim</span> →
+    <span class="tag t-gen">answer</span> →
+    <span class="tag t-sol">add_reply</span>
+  </p>
+  <div class="cols">
+    <ul>
+      <li><b>In</b>: the history and the question, plus the chatbot's language, instructions and formatting rules.</li>
+      <li>The question is appended, and the history is trimmed to the last N turns.</li>
+      <li><b>Out</b>: the reply and the new history.</li>
+    </ul>
+    <div class="card stack">
+      <h3>Cost cap</h3>
+      <div>✔ the GENERATE node makes one model call</div>
+      <div>✔ <code>MeteredLLM(..., max_calls=1)</code> caps each run at one call</div>
+    </div>
+  </div>
+  <aside class="notes">The graph has four nodes. The three SOLVE nodes do plain data work and the GENERATE node calls the model. Every run is capped at one model call, so a turn can never make extra billed calls.</aside>
+</section>
+
+<section class="slide">
+  <h2>The same graph without the app</h2>
+  <pre><span class="c"># check a graph after editing it</span>
+graf validate src/chat_turn.graph.yaml
+
+<span class="c"># run one turn from the shell</span>
+graf run src/chat_turn.graph.yaml --llm claude_cli:claude-sonnet-5-5 \
+    --param question=<span class="s">"What is a graph?"</span> --param history=<span class="s">'[]'</span></pre>
+  <ul>
+    <li>LLM ids have the form <code>&lt;graflang adapter&gt;:&lt;model&gt;</code>.</li>
+  </ul>
+  <aside class="notes">Because the logic is a graph file, you can validate it and run it with the graf command, with no Streamlit involved. That makes it easy to test the graph on its own after you change it.</aside>
+</section>
+
+<section class="slide">
+  <h2>Chatbots: 1 to 5 per chat</h2>
+  <div class="cols">
+    <ul>
+      <li>Each chatbot has its own <b>provider, model, turns it sees, language, temperature and instructions</b>.</li>
+      <li>Instructions are a system prompt, so you can compare prompts as well as models.</li>
+      <li>Every question goes to all chatbots <b>in parallel</b>, and each one keeps its own conversation.</li>
+      <li>Each answer appears in its own column <b>as soon as it arrives</b>.</li>
+    </ul>
+    <div class="card stack">
+      <h3>Easy to line up</h3>
+      <div>✔ numbered questions, e.g. <code>[4] what is ...</code></div>
+      <div>✔ a scrollbar per chatbot</div>
+      <div>✔ adjustable pane height and font size</div>
+    </div>
+  </div>
+  <aside class="notes">A chat has between one and five chatbots, and each is configured on its own. Questions are numbered in every column, which makes it easy to compare the answers to the same question.</aside>
+</section>
+
+<section class="slide">
+  <h2>Providers and what they need</h2>
+  <table>
+    <tr><th>Provider</th><th>Needs</th><th>Cost</th></tr>
+    <tr><td><code>anthropic</code></td><td>the Claude CLI, installed and signed in (no images, no temperature)</td><td>billed</td></tr>
+    <tr><td><code>anthropic-api</code></td><td><code>ANTHROPIC_API_KEY</code></td><td>billed</td></tr>
+    <tr><td><code>openrouter</code> / <code>openai</code></td><td><code>OPENROUTER_API_KEY</code> / <code>OPENAI_API_KEY</code></td><td>billed</td></tr>
+    <tr><td><code>deepseek</code> / <code>qwen</code></td><td><code>DEEPSEEK_API_KEY</code> / <code>DASHSCOPE_API_KEY</code></td><td>billed</td></tr>
+    <tr><td><code>ollama</code></td><td>Ollama at <code>localhost:11434</code> (or <code>$OLLAMA_HOST</code>) with a model pulled</td><td>free</td></tr>
+  </table>
+  <aside class="notes">There are seven providers. Ollama runs locally and is free; all the others are billed. The anthropic provider goes through the Claude CLI, so it needs no API key, but it cannot handle images or temperature.</aside>
+</section>
+
+<section class="slide">
+  <h2>API keys: where they come from</h2>
+  <div class="cols">
+    <ul>
+      <li>1. A key typed on the <b>Settings</b> page (kept in memory only, never saved)</li>
+      <li>2. The shell environment, e.g. <code>OPENAI_API_KEY=sk-... dd-chat</code></li>
+      <li>3. <code>.env</code>: first <code>./.env</code>, then <code>~/.dd-chat/.env</code></li>
+      <li>An empty value in <code>.env</code> counts as not set.</li>
+    </ul>
+    <div class="card stack">
+      <h3><code>src/env_keys.py</code></h3>
+      <div>✔ no Streamlit code</div>
+      <div>✔ follows python-dotenv's convention: the environment beats <code>.env</code></div>
+      <div>✔ every source ends up in <code>os.environ</code>, where the adapters read it</div>
+    </div>
+  </div>
+  <aside class="notes">A key is taken from the first source that has it: the Settings page, then the environment, then the .env file. A key typed on Settings is never written to disk.</aside>
+</section>
+
+<section class="slide">
+  <h2>Inside a round on the Chats page</h2>
+  <ul>
+    <li><code>run_round</code> in <code>src/views/multi_chat.py</code> runs one question across all chatbots.</li>
+    <li>Chatbots that would send <b>identical input</b> are asked only once, and the reply is copied (<code>shared_from</code>), so histories stay aligned.</li>
+    <li>Answers are drawn into each column's pane <b>as the futures complete</b>.</li>
+    <li>Chatbots still running past the timeout are given up.</li>
+    <li>A failure stores a <code>retry_{i}</code> job, so the failed chatbot can be <b>retried alone</b>; the other replies are kept.</li>
+  </ul>
+  <aside class="notes">Each chatbot runs in its own thread. If two chatbots would send exactly the same input, the model is asked only once, which saves a call. If one chatbot fails, the others keep their answers and you can retry just that one.</aside>
+</section>
+
+<section class="slide">
+  <h2>Kernel reuse in chat_engine.py</h2>
+  <div class="cols">
+    <ul>
+      <li>SOLVE nodes run in a <b>Jupyter kernel</b> that GraphLang starts for each run.</li>
+      <li><code>chat_engine._kernels()</code> lends long-lived <code>_KeptPool</code>s and swaps them into <code>runtime.kernels</code> before <code>execute()</code>.</li>
+      <li>This cuts the overhead from <b>about 0.7 s to 0.03 s per run</b>.</li>
+    </ul>
+    <div class="card stack">
+      <h3>Caveat</h3>
+      <div>✔ <code>runtime.kernels</code> is an undocumented GraphLang attribute</div>
+      <div>✔ if it is missing, the code falls back</div>
+      <div>✔ kernel sockets go in <code>tmp/</code> (from a checkout) or <code>~/.dd-chat</code> (installed)</div>
+    </div>
+  </div>
+  <aside class="notes">Starting a new kernel for every chatbot and every question was slow; the code review listed it as a weakness. The engine now keeps kernels alive and reuses them. It relies on an internal GraphLang attribute, so it falls back to the normal behaviour if that attribute is missing.</aside>
+</section>
+
+<section class="slide">
+  <h2>Comparing and judging answers</h2>
+  <div class="cols">
+    <ul>
+      <li><b>Per answer</b>: response time, tokens and cost; totals per chat.</li>
+      <li>📋 copy, 🔊 read aloud, 👍 / 👎, and 🏆 for the best answer to each question.</li>
+      <li><b>Blind mode</b> hides the model names until you pick the best answer.</li>
+    </ul>
+    <div class="card stack">
+      <h3><code>compare_answers.graph.yaml</code></h3>
+      <div>A model you choose compares the answers to one question:</div>
+      <div>✔ where they agree</div>
+      <div>✔ where they differ</div>
+      <div>✔ what is doubtful</div>
+      <div>✔ which answer is most complete</div>
+    </div>
+  </div>
+  <aside class="notes">You can judge answers yourself, with blind mode if you want to avoid bias, or have a model compare them. The comparison is a second graph, which shows GraphLang being used for more than one task in the app.</aside>
+</section>
+
+<section class="slide">
+  <h2>Other features on the Chats page</h2>
+  <ul>
+    <li><b>Retry and redo</b>: retry a failed chatbot alone; ↻ asks a chatbot its latest question again.</li>
+    <li><b>Batch</b>: upload a list of questions (.txt, .csv, .yaml), and every chatbot answers them all.</li>
+    <li><b>Presets</b>: save a line-up of chatbots under a name and load it later.</li>
+    <li><b>Attachments</b>: text files and PDFs go to every chatbot; images go only to providers that can read them.</li>
+    <li><b>Dead links</b> in answers get ❌; addresses on your own machine or network are never requested.</li>
+  </ul>
+  <aside class="notes">These are smaller features that make day-to-day use easier. The link checker connects only to verified public IP addresses and re-checks every redirect, so it never requests private addresses.</aside>
+</section>
+
+<section class="slide">
+  <h2>Saving, review and export</h2>
+  <div class="cols">
+    <ul>
+      <li>Saved in SQLite at <code>~/.dd-chat/multi_chat.db</code> (or <code>$DD_CHAT_HOME</code>).</li>
+      <li><code>save_session</code> uses an optimistic <code>rev</code>: if another tab wrote first, it <b>forks a new session</b> instead of overwriting.</li>
+      <li><b>Review page</b>: search, read, reopen, disable or delete chats, and import an export file.</li>
+      <li>A <b>leaderboard</b> shows, per model, 🏆 wins, thumbs, time and cost.</li>
+    </ul>
+    <div class="card stack">
+      <h3>Export</h3>
+      <div>✔ YAML: <code>GraphLang-YYMMDD-HHMMSS.chat.yaml</code>, complete, can be imported again</div>
+      <div>✔ Markdown, organised by question</div>
+    </div>
+  </div>
+  <aside class="notes">Every chat is saved automatically. If you have the same chat open in two tabs, neither tab overwrites the other; the second save becomes a new session. The Review page brings saved chats together and ranks the models.</aside>
+</section>
+
+<section class="slide">
+  <h2>The five pages and the code layout</h2>
+  <div class="cols wide-right">
+    <ul>
+      <li><code>src/app.py</code> registers five pages with <code>st.navigation</code>:</li>
+      <li>💬 Chats, 🔍 Review, 📝 Notes, ⚙️ Settings, ℹ️ About</li>
+      <li>Page files hold the UI; shared logic lives beside <code>app.py</code>.</li>
+    </ul>
+    <table>
+      <tr><th>Module</th><th>What</th></tr>
+      <tr><td><code>chat_engine.py</code></td><td>runs the graphs; tokens, cost, kernel reuse (no Streamlit code)</td></tr>
+      <tr><td><code>chat_db.py</code></td><td>SQLite: sessions, messages, comparisons, settings</td></tr>
+      <tr><td><code>chat_models.py</code></td><td>providers, model lists, saved selection</td></tr>
+      <tr><td><code>chat_export.py</code></td><td>YAML and Markdown export, YAML import</td></tr>
+      <tr><td><code>link_check.py</code></td><td>the dead-link check</td></tr>
+    </table>
+  </div>
+  <aside class="notes">All the code is in src. The engine has no Streamlit code, so it can run in worker threads and in tests. The Notes page holds notes with attached files in the same database, and the About page explains how a question travels through the graph.</aside>
+</section>
+
+<section class="slide">
+  <h2>Demo: three chatbots, one question</h2>
+  <div class="demo"><b>Demo</b> Set up three chatbots: Claude Opus, Claude Sonnet replying in Chinese, and a local Ollama model. Ask one question and watch the answers arrive in their columns.</div>
+  <ul>
+    <li>Compare the time, tokens and cost under each answer.</li>
+    <li>Run the answer comparison, then pick 🏆 for the best answer.</li>
+    <li>Export the chat as YAML or Markdown.</li>
+  </ul>
+  <aside class="notes">This is the same setup as the screenshot in the README. Point out that answers appear in different columns at different times, and that the Ollama answer is free. End by exporting the chat.</aside>
+</section>
+
+<section class="slide">
+  <h2>How to try it</h2>
+  <div class="cols">
+    <pre><span class="c"># from PyPI</span>
+pip install dd-chat
+dd-chat
+
+<span class="c"># or from a checkout</span>
+git clone https://github.com/digital-duck/dd-chat.git
+cd dd-chat
+pip install -r requirements.txt
+streamlit run src/app.py</pre>
+    <ul>
+      <li>Requires Python 3.11 or newer and <code>graflang&gt;=0.2.1</code>.</li>
+      <li>Extra arguments are passed on to Streamlit, e.g. <code>--server.port 8502</code>.</li>
+      <li>From a checkout, run from the repo root so <code>.streamlit/config.toml</code> applies.</li>
+      <li><b>For free</b>: use a local Ollama model or the graflang <code>mock</code> adapter.</li>
+    </ul>
+  </div>
+  <aside class="notes">There are two ways to start: install from PyPI, or clone the repo and run Streamlit. If you do not want to pay for API calls, use Ollama or the mock adapter.</aside>
+</section>
+
+<section class="slide">
+  <h2>Tests</h2>
+  <pre>pip install -r requirements-dev.txt
+pytest tests
+
+<span class="c"># one test</span>
+pytest tests/test_chat_db.py::test_second_tab_does_not_overwrite_first</pre>
+  <ul>
+    <li><b>No model is called</b>: the tests use the mock adapter, a fake ask and a temporary database.</li>
+    <li>The deployment plan counts 50 tests, with no model or network calls.</li>
+  </ul>
+  <aside class="notes">The tests run offline and cost nothing. They cover the database, the engine, export, the link checker, API keys and the pages.</aside>
+</section>
+
+<section class="slide">
+  <h2>What is not done yet</h2>
+  <ul>
+    <li>An <b>early prototype</b>, built on an early prototype (GraphLang).</li>
+    <li>The Claude CLI's cost is <b>not known</b>, and its token counts are estimates.</li>
+    <li><b>Single-user and local</b>: SQLite in <code>~/.dd-chat</code>.</li>
+    <li>Login and a hosted PostgreSQL database are only a <b>draft plan</b>.</li>
+    <li>Open questions: how many users, which PostgreSQL host, and how API keys are kept (per session, or stored encrypted per user).</li>
+  </ul>
+  <aside class="notes">This is a prototype. A typed API key goes into the process environment, which is fine for one local user but would leak between users on a hosted server. That is why storing keys is the biggest open question in the deployment plan.</aside>
+</section>
+
+<section class="slide">
+  <h2>References</h2>
+  <ul class="refs">
+    <li><a href="https://github.com/digital-duck/dd-chat">dd-chat on GitHub</a></li>
+    <li><a href="https://github.com/digital-duck/graflang">GraphLang (graflang) on GitHub</a></li>
+    <li><a href="https://docs.claude.com/en/docs/claude-code">Claude CLI documentation</a></li>
+    <li><a href="https://ollama.com">Ollama</a></li>
+  </ul>
+  <aside class="notes">The repo has the README, the developer docs and the tests. GraphLang is the graph language that the app showcases.</aside>
+</section>
+
+<section class="slide">
+  <h2>Questions?</h2>
+  <div style="margin:auto 0">
+    <p class="big">Questions?</p>
+    <p class="sub"><a href="https://github.com/digital-duck/dd-chat" target="_blank" rel="noopener">https://github.com/digital-duck/dd-chat</a></p>
+  </div>
+  <aside class="notes">Thank the audience and take questions. If there is time, run a second question live, for example with a different set of chatbots.</aside>
+</section>
+</div>
+
+<script>
+(function () {
+  // the outline slide is built from the other slides' titles, so it cannot drift when a slide is added or renamed
+  (function () {
+    const all = [...document.querySelectorAll('.slide')], toc = document.getElementById('toc');
+    if (!toc) return;
+    all.forEach((sl, k) => {
+      const h = sl.querySelector('h2');
+      if (!h || sl === toc.closest('.slide')) return;
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="n">' + (k + 1) + '</span><span>' + h.innerHTML + '</span>';
+      li.onclick = e => { e.stopPropagation(); window.__show && window.__show(k); };
+      toc.appendChild(li);
+    });
+  })();
+  const slides = [...document.querySelectorAll('.slide')];
+  const bar = document.getElementById('bar');
+  let i = Math.min(Math.max(parseInt(location.hash.slice(1), 10) - 1 || 0, 0), slides.length - 1);
+  let overview = false;
+
+  function notesBox() {
+    let box = document.getElementById('notes-box');
+    if (!box) { box = document.createElement('div'); box.id = 'notes-box'; document.body.appendChild(box); }
+    const aside = slides[i].querySelector('.notes');
+    box.innerHTML = aside ? aside.innerHTML : '';
+  }
+  function show(n) {
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    ['first', 'prev'].forEach(id => document.getElementById(id).disabled = i === 0);
+    ['next', 'last'].forEach(id => document.getElementById(id).disabled = i === slides.length - 1);
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    history.replaceState(null, '', '#' + (i + 1));
+    notesBox();
+    // page number in the corner of every slide but the first
+    slides.forEach((s, k) => {
+      let f = s.querySelector('.foot');
+      if (!f && k > 0) { f = document.createElement('div'); f.className = 'foot'; f.innerHTML = '<span></span><span></span>'; f.firstElementChild.textContent = document.body.dataset.title; s.appendChild(f); }
+      if (f && k > 0) f.lastElementChild.textContent = (k + 1) + ' / ' + slides.length;
+    });
+  }
+  window.__show = show;
+  function toggleOverview() {
+    overview = !overview;
+    const deck = document.getElementById('deck');
+    if (overview) {
+      deck.style.cssText = 'position:static;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:14px;place-items:start';
+      slides.forEach((s, k) => { s.classList.add('on'); s.style.cssText = 'width:100%;height:auto;aspect-ratio:16/9;font-size:9px;cursor:pointer'; s.onclick = () => { toggleOverview(); show(k); }; });
+      document.documentElement.style.overflow = 'auto'; document.body.style.overflow = 'auto';
+    } else {
+      deck.style.cssText = '';
+      slides.forEach(s => { s.style.cssText = ''; s.onclick = null; });
+      document.documentElement.style.overflow = ''; document.body.style.overflow = '';
+      show(i);
+    }
+  }
+  const go = (id, f) => document.getElementById(id).addEventListener('click', e => { e.stopPropagation(); if (!overview) f(); });
+  const outline = Math.max(0, slides.findIndex(s => s.id === 'outline'));
+  go('tocbtn', () => show(outline)); go('first', () => show(0)); go('prev', () => show(i - 1)); go('next', () => show(i + 1)); go('last', () => show(slides.length - 1));
+  document.getElementById('pdf').addEventListener('click', () => { if (overview) toggleOverview(); window.print(); });
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); if (!overview) show(i + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); if (!overview) show(i - 1); }
+    else if (e.key === 't' || e.key === 'T') { if (!overview) show(outline); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+    else if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
+    else if (e.key === 'o' || e.key === 'O' || e.key === 'Escape' && overview) toggleOverview();
+  });
+  document.addEventListener('click', e => {
+    if (overview || e.target.closest('a, button, pre')) return;
+    show(e.clientX > innerWidth / 2 ? i + 1 : i - 1);
+  });
+  show(i);
+})();
+</script>
+</body>
+</html>
