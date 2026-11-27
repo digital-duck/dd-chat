@@ -1,4 +1,5 @@
 """The Chats page end to end, with the model calls replaced by a fake (no model is called)."""
+from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
@@ -21,7 +22,7 @@ def calls(monkeypatch):
 
 
 def start(bots=2):
-    at = AppTest.from_file("../src/app.py", default_timeout=30)
+    at = AppTest.from_file(str(Path(__file__).resolve().parent.parent / "src" / "app.py"), default_timeout=30)   # absolute: a relative path goes stale when the repo folder is renamed
     at.session_state["bots"] = bots
     at.session_state["provider_0"] = at.session_state["provider_1"] = "anthropic"
     at.session_state["model_anthropic_0"] = "claude-opus-5-5"

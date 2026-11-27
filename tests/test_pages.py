@@ -1,11 +1,12 @@
 """The pages render without errors (no model is called)."""
+from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 import chat_db
 
 
 def page():
-    at = AppTest.from_file("../src/app.py", default_timeout=30)
+    at = AppTest.from_file(str(Path(__file__).resolve().parent.parent / "src" / "app.py"), default_timeout=30)   # absolute: a relative path goes stale when the repo folder is renamed
     at.run()
     return at
 
